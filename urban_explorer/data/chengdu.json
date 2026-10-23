@@ -1,0 +1,27 @@
+{
+  "city": "成都",
+  "introduction": "从一顿饭、一条街和一杯茶开始认识这座城。先了解片区，再挑选适合自己节奏的吃喝玩乐。这里提供一份可交互的城市探索样例。",
+  "tags": ["当地饮食", "街区漫步", "茶馆休闲"],
+  "foods": ["川菜", "小吃", "火锅", "茶点"],
+  "areas": [
+    {"name": "春熙路", "description": "从逛店和聚餐开始，体验城市商业街区。", "tags": ["逛店", "聚餐"]},
+    {"name": "玉林", "description": "把街巷闲逛、美食和音乐放在一次探索里。", "tags": ["街巷", "音乐"]},
+    {"name": "少城", "description": "给文化空间和慢节奏休闲留一点时间。", "tags": ["文化", "喝茶"]}
+  ],
+  "sources": [{"title": "城市探索演示资料；片区标签为界面样例", "kind": "demo"}],
+  "mode": "demo",
+  "places": [
+    {"id":"demo-food-1","name":"街角川味小馆","kind":"food","category":"地方菜","area":"春熙路","cost":78,"tags":["地方特色","朋友聚餐","可选微辣"],"reason":"适合尝试地方家常菜，想了解口味时可以继续询问助手。","location":{"longitude":104.081,"latitude":30.657}},
+    {"id":"demo-food-2","name":"巷里小吃铺","kind":"food","category":"小吃","area":"玉林","cost":35,"tags":["地方特色","一个人","小吃"],"reason":"适合预算有限、想尝试几种小吃的一餐。","location":{"longitude":104.065,"latitude":30.63}},
+    {"id":"demo-food-3","name":"庭院家常菜","kind":"food","category":"地方菜","area":"少城","cost":108,"tags":["朋友聚餐","地方特色"],"reason":"适合朋友聚餐，提供与小吃不同的用餐体验。","location":{"longitude":104.05,"latitude":30.665}},
+    {"id":"demo-food-4","name":"青禾轻食屋","kind":"food","category":"轻食","area":"玉林","cost":48,"tags":["清淡","一个人","不吃辣"],"reason":"适合想吃得清淡、希望控制消费的用户。","location":{"longitude":104.062,"latitude":30.633}},
+    {"id":"demo-food-5","name":"小院火锅","kind":"food","category":"火锅","area":"春熙路","cost":96,"tags":["辣味","朋友聚餐","地方特色"],"reason":"适合喜欢热闹和辣味、想与朋友一起吃火锅的场景。","location":{"longitude":104.083,"latitude":30.66}},
+    {"id":"demo-food-6","name":"晨光面铺","kind":"food","category":"面食","area":"少城","cost":22,"tags":["清淡","一个人","早餐"],"reason":"适合简单吃一顿，给接下来的街区探索留出时间。","location":{"longitude":104.053,"latitude":30.662}},
+    {"id":"demo-fun-1","name":"巷里茶室","kind":"fun","category":"休闲","area":"少城","cost":45,"tags":["喝茶","安静","室内"],"reason":"适合放慢节奏，坐下来读书或与朋友聊天。","location":{"longitude":104.051,"latitude":30.664}},
+    {"id":"demo-fun-2","name":"河畔音乐空间","kind":"fun","category":"音乐现场","area":"玉林","cost":120,"tags":["音乐","晚上","室内"],"reason":"适合喜欢现场音乐的用户；具体演出日期、场次和票价待确认。","location":{"longitude":104.064,"latitude":30.631}},
+    {"id":"demo-fun-3","name":"街区艺术空间","kind":"fun","category":"文化展览","area":"春熙路","cost":0,"tags":["看展","文化","室内"],"reason":"适合把逛街与看展放在一起；当前展期和预约要求待确认。","location":{"longitude":104.079,"latitude":30.658}},
+    {"id":"demo-fun-4","name":"晚风漫步道","kind":"fun","category":"街区漫步","area":"玉林","cost":0,"tags":["散步","晚上","户外"],"reason":"适合饭后走走，示例中的位置仅用于演示周边筛选。","location":{"longitude":104.067,"latitude":30.632}},
+    {"id":"demo-fun-5","name":"街角桌游社","kind":"fun","category":"朋友娱乐","area":"春熙路","cost":68,"tags":["朋友","晚上","室内"],"reason":"适合几位朋友一起活动，预约和实际收费待确认。","location":{"longitude":104.082,"latitude":30.654}},
+    {"id":"demo-fun-6","name":"纸间独立书屋","kind":"fun","category":"休闲","area":"少城","cost":null,"tags":["安静","读书","室内"],"reason":"适合喜欢书店和安静空间的用户；消费信息尚不明确。","location":{"longitude":104.054,"latitude":30.666}}
+  ]
+}

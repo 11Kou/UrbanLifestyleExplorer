@@ -1,0 +1,58 @@
+import math
+
+from urban_explorer.models import Coordinates, ExploreFilters, Place
+
+
+def place_introduction(place: Place) -> str:
+    location = place.area or place.city
+    sentences = [f"位于{location}的{place.category or '场所'}。"]
+    if place.tags:
+        sentences.append(f"地图收录的特色有{'、'.join(place.tags[:3])}。")
+    if place.cost is not None:
+        sentences.append(f"人均参考约 {place.cost:g} 元。")
+    if place.opening_hours:
+        sentences.append(f"营业时间：{place.opening_hours}。")
+    if not place.tags and place.cost is None and not place.opening_hours and place.address:
+        sentences.append(f"地址在{place.address}。")
+    return "".join(sentences)
+
+
+def distance_m(a: Coordinates, b: Coordinates) -> float:
+    lat1, lat2 = math.radians(a.latitude), math.radians(b.latitude)
+    dlat = lat2 - lat1
+    dlon = math.radians(b.longitude - a.longitude)
+    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    return round(6371000 * 2 * math.asin(min(1, math.sqrt(h))))
+
+
+def filter_places(places: list[Place], filters: ExploreFilters, anchor: Place | None = None) -> list[Place]:
+    filtered = []
+    for original in places:
+        p = original.model_copy(deep=True)
+        if p.city.removesuffix("市") != filters.city or p.kind != filters.kind:
+            continue
+        if filters.area and filters.area not in (p.area + p.address):
+            continue
+        if filters.category and filters.category not in (p.category + " ".join(p.tags)):
+            continue
+        if filters.budget is not None and filters.budget_scope in (filters.kind, "all"):
+            if p.cost is None or p.cost > filters.budget:
+                continue
+        if filters.query and filters.query not in (p.name + p.category + " ".join(p.tags)):
+            continue
+        if "不吃辣" in filters.preferences and "辣味" in p.tags:
+            continue
+        if anchor and anchor.location:
+            if not p.location or p.id == anchor.id:
+                continue
+            p.distance_m = distance_m(anchor.location, p.location)
+            if p.distance_m > filters.radius_m:
+                continue
+        filtered.append(p)
+    filtered.sort(key=lambda p: (
+        -len(set(filters.preferences) & set(p.tags)),
+        p.distance_m if p.distance_m is not None else 0,
+        -(p.rating or 0),
+        p.cost if p.cost is not None else float("inf"), p.id,
+    ))
+    return filtered
