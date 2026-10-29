@@ -2,6 +2,7 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 if any(importlib.util.find_spec(name) is None for name in ["fastapi", "langgraph", "sqlalchemy", "pydantic_settings", "httpx"]):
     raise unittest.SkipTest("完整依赖尚未安装，接口与多 Agent 集成测试暂不可运行")
@@ -13,6 +14,20 @@ from urban_explorer.config import Settings
 
 
 class ApiTests(unittest.TestCase):
+    def test_independent_task_conditions_survive_restart(self):
+        from test_orchestration import TaskProviders
+        from urban_explorer.agents import AgentTeam
+        with patch('urban_explorer.api.AgentTeam', return_value=AgentTeam(TaskProviders())):
+            with TestClient(create_app(self.settings)) as client:
+                reply = client.post('/chat', json={'session_id': self.sid, 'message': '推荐餐厅和书店'})
+                self.assertEqual(reply.status_code, 200)
+                self.assertEqual(reply.json()['session']['budgets'], {'food': 80, 'fun': 30})
+        with TestClient(create_app(self.settings)) as restarted:
+            state = restarted.get(f'/sessions/{self.sid}').json()
+        self.assertEqual(state['domain_filters']['food']['preferences'], ['清淡'])
+        self.assertEqual(state['domain_filters']['fun']['category'], '书店')
+        self.assertEqual(state['domain_filters']['fun']['preferences'], ['安静'])
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.settings = Settings(app_mode="demo", database_url="sqlite:///" + str(Path(self.temp.name) / "test.db"), amap_api_key="", bocha_api_key="", llm_api_key="", _env_file=None)
@@ -43,6 +58,22 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(second.status_code, 200)
         self.assertEqual(second.json()["session"]["filters"]["area"], "玉林")
         self.assertEqual(second.json()["session"]["filters"]["budget"], 100)
+
+    def test_recommendation_evidence_survives_favorites_and_restart(self):
+        response = self.client.post(f"/sessions/{self.sid}/search", json={
+            "city": "成都", "kind": "food", "budget": 50, "preferences": ["安静"],
+        })
+        self.assertEqual(response.status_code, 200)
+        place = response.json()["places"][0]
+        self.assertTrue(place["match_reasons"])
+        self.assertEqual(place["unverified_preferences"], ["安静"])
+        self.assertEqual(self.client.put(f"/sessions/{self.sid}/favorites/{place['id']}").status_code, 200)
+        with TestClient(create_app(self.settings)) as restarted:
+            saved = restarted.get(f"/sessions/{self.sid}/favorites").json()[0]
+            state = restarted.get(f"/sessions/{self.sid}").json()
+        self.assertEqual(saved["match_reasons"], place["match_reasons"])
+        self.assertEqual(saved["unverified_preferences"], ["安静"])
+        self.assertEqual(state["results"][0]["match_reasons"], place["match_reasons"])
 
     def test_unknown_and_fabricated_places_cannot_be_saved(self):
         response = self.client.put(f"/sessions/{self.sid}/favorites/not-a-real-place")

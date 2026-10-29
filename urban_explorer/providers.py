@@ -245,10 +245,10 @@ class Providers:
         pois = data.get("pois") or []
         return self.parse_place(pois[0], city, kind) if pois else None
 
-    async def search_places(self, filters: ExploreFilters, anchor: Place | None = None) -> SearchResult:
+    async def search_places(self, filters: ExploreFilters, anchor: Place | None = None, *, refresh: bool = False) -> SearchResult:
         key = filters.model_dump_json() + (anchor.model_dump_json() if anchor else "")
         cached = self._search_cache.get(key)
-        if cached and time.monotonic() - cached[0] < 120:
+        if not refresh and cached and time.monotonic() - cached[0] < 120:
             return cached[1].model_copy(deep=True)
         result = await self._search_places(filters, anchor)
         if len(self._search_cache) >= 128:

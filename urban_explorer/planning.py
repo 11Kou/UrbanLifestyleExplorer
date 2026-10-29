@@ -12,6 +12,31 @@ AgentName = Literal["city", "food", "fun"]
 class RoutingPlan(BaseModel):
     agents: list[AgentName] = Field(min_length=1, max_length=3)
     filters: ExploreFilters
+    tasks: dict[AgentName, ExploreFilters] = Field(default_factory=dict)
+
+
+def task_filters(plan: RoutingPlan, state: SessionState) -> dict[str, ExploreFilters]:
+    tasks = {}
+    for agent in plan.agents:
+        current = plan.filters.model_copy(deep=True)
+        if agent != "city":
+            if agent != current.kind:
+                saved = state.domain_filters.get(agent)
+                current.category = saved.category if saved else ""
+                current.query = saved.query if saved and saved.city == current.city else ""
+                current.preferences = list(saved.preferences) if saved else [p for p in current.preferences if agent == "food" or p not in ("不吃辣", "清淡")]
+            if current.budget_scope not in (agent, "all"):
+                current.budget = state.budgets.get(agent)
+        if agent in plan.tasks:
+            current = plan.tasks[agent].model_copy(deep=True)
+        # All tasks stay in the requested city and only use a validated anchor.
+        current.city = plan.filters.city
+        current.anchor_id = plan.filters.anchor_id
+        if agent != "city":
+            current.kind = agent
+            current.budget_scope = agent
+        tasks[agent] = current
+    return tasks
 
 
 def rule_plan(message: str, state: SessionState) -> RoutingPlan:

@@ -3,7 +3,7 @@ import unittest
 from pydantic import ValidationError
 
 from urban_explorer.catalog import DemoCatalog
-from urban_explorer.models import ExploreFilters, SessionState
+from urban_explorer.models import ExploreFilters, Place, SessionState
 from urban_explorer.planning import rule_plan
 from urban_explorer.recommendations import distance_m, filter_places
 
@@ -18,6 +18,44 @@ class RecommendationTests(unittest.TestCase):
         self.assertTrue(results)
         self.assertTrue(all(p.cost is not None and p.cost <= 50 for p in results))
         self.assertNotIn("demo-fun-6", {p.id for p in results})
+
+    def test_ranking_deduplicates_and_exposes_only_supported_preferences(self):
+        base = self.catalog.get("demo-food-2")
+        matched = base.model_copy(update={"id": "matched", "rating": 4.1, "tags": ["一个人"]})
+        highly_rated = base.model_copy(update={"id": "rated", "rating": 4.9, "tags": []})
+        missing_rating = base.model_copy(update={"id": "unknown", "rating": None, "tags": []})
+        results = filter_places([missing_rating, highly_rated, matched, matched], ExploreFilters(
+            area="玉林", budget=50, preferences=["一个人", "安静", "一个人"],
+        ))
+        self.assertEqual([p.id for p in results], ["matched", "rated", "unknown"])
+        self.assertEqual(results[0].unverified_preferences, ["安静"])
+        self.assertIn("标签匹配：一个人", results[0].match_reasons)
+        self.assertIn("人均参考 35 元，在 50 元预算内", results[0].match_reasons)
+        self.assertIn("地图评分 4.1/5", results[0].match_reasons)
+        self.assertFalse(any("评分" in reason for reason in results[-1].match_reasons))
+        self.assertFalse(matched.match_reasons)
+
+    def test_query_evidence_does_not_leak_from_previous_search(self):
+        old = self.catalog.get("demo-food-2").model_copy(update={
+            "distance_m": 100, "match_reasons": ["旧预算"], "unverified_preferences": ["安静"],
+        })
+        result = filter_places([old], ExploreFilters())[0]
+        self.assertIsNone(result.distance_m)
+        self.assertEqual(result.match_reasons, [])
+        self.assertEqual(result.unverified_preferences, [])
+        self.assertEqual(old.distance_m, 100)
+
+    def test_missing_dietary_tag_is_not_proof_of_suitability(self):
+        place = self.catalog.get("demo-food-1")
+        result = filter_places([place], ExploreFilters(preferences=["不吃辣"]))[0]
+        self.assertEqual(result.unverified_preferences, ["不吃辣"])
+        self.assertNotIn("标签匹配：不吃辣", result.match_reasons)
+
+    def test_old_saved_places_accept_missing_evidence_fields(self):
+        raw = self.catalog.get("demo-food-2").model_dump(exclude={"match_reasons", "unverified_preferences"})
+        restored = Place.model_validate(raw)
+        self.assertEqual(restored.match_reasons, [])
+        self.assertEqual(restored.unverified_preferences, [])
 
     def test_food_budget_does_not_restrict_entertainment(self):
         results = filter_places(self.catalog.places, ExploreFilters(kind="fun", budget=50, budget_scope="food"))

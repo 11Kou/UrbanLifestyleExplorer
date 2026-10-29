@@ -193,6 +193,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             else:
                 state.budgets[plan.filters.budget_scope] = plan.filters.budget
             state.last_agents = plan.agents
+            for domain in ("food", "fun"):
+                if domain in plan.tasks:
+                    state.domain_filters[domain] = plan.tasks[domain]
+                    state.budgets[domain] = plan.tasks[domain].budget
             if state.selected_place and state.selected_place.city != state.filters.city:
                 state.selected_place = None
             results = sorted(output["results"], key=lambda r: ["city", "food", "fun"].index(r.agent))

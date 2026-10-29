@@ -27,8 +27,14 @@ def distance_m(a: Coordinates, b: Coordinates) -> float:
 
 def filter_places(places: list[Place], filters: ExploreFilters, anchor: Place | None = None) -> list[Place]:
     filtered = []
+    seen_ids = set()
     for original in places:
         p = original.model_copy(deep=True)
+        # Recompute query-specific evidence; saved results may belong to older filters.
+        p.match_reasons = []
+        p.supervisor_reason = ""
+        p.unverified_preferences = []
+        p.distance_m = None
         if p.city.removesuffix("市") != filters.city or p.kind != filters.kind:
             continue
         if filters.area and filters.area not in (p.area + p.address):
@@ -48,6 +54,21 @@ def filter_places(places: list[Place], filters: ExploreFilters, anchor: Place | 
             p.distance_m = distance_m(anchor.location, p.location)
             if p.distance_m > filters.radius_m:
                 continue
+        if p.id in seen_ids:
+            continue
+        seen_ids.add(p.id)
+        matched = [pref for pref in dict.fromkeys(filters.preferences) if pref in p.tags]
+        p.unverified_preferences = [pref for pref in dict.fromkeys(filters.preferences) if pref not in p.tags]
+        if matched:
+            p.match_reasons.append("标签匹配：" + "、".join(matched))
+        if filters.area:
+            p.match_reasons.append(f"地址或片区包含{filters.area}")
+        if filters.budget is not None and filters.budget_scope in (filters.kind, "all"):
+            p.match_reasons.append(f"人均参考 {p.cost:g} 元，在 {filters.budget:g} 元预算内")
+        if p.distance_m is not None:
+            p.match_reasons.append(f"距所选地点直线约 {p.distance_m:g} 米")
+        if p.rating is not None:
+            p.match_reasons.append(f"地图评分 {p.rating:g}/5")
         filtered.append(p)
     filtered.sort(key=lambda p: (
         -len(set(filters.preferences) & set(p.tags)),

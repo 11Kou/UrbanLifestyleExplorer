@@ -13,6 +13,20 @@ from urban_explorer.providers import ProviderError, Providers
 
 
 class ProviderTests(unittest.IsolatedAsyncioTestCase):
+    async def test_directed_retry_bypasses_cached_empty_search(self):
+        calls = []
+        def respond(request):
+            calls.append(request)
+            return httpx.Response(200, json={"status": "1", "pois": []})
+        async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+            providers = Providers(self.settings(), client)
+            filters = ExploreFilters()
+            await providers.search_places(filters)
+            await providers.search_places(filters)
+            self.assertEqual(len(calls), 1)
+            await providers.search_places(filters, refresh=True)
+            self.assertEqual(len(calls), 2)
+
     def settings(self):
         return Settings(app_mode="live", amap_api_key="test-map-key", bocha_api_key="", llm_api_key="", _env_file=None)
 

@@ -47,6 +47,9 @@ class Place(BaseModel):
     opening_hours: str | None = None
     tags: list[str] = Field(default_factory=list)
     reason: str = ""
+    supervisor_reason: str = ""
+    match_reasons: list[str] = Field(default_factory=list)
+    unverified_preferences: list[str] = Field(default_factory=list)
     location: Coordinates | None = None
     distance_m: float | None = None
     sources: list[Source] = Field(default_factory=list)
@@ -106,6 +109,7 @@ class AgentResult(BaseModel):
     guide: CityGuide | None = None
     sources: list[Source] = Field(default_factory=list)
     notices: list[str] = Field(default_factory=list)
+    attempts: int = Field(default=1, ge=1, le=2)
 
 
 class SessionState(BaseModel):
@@ -116,6 +120,7 @@ class SessionState(BaseModel):
     selected_place: Place | None = None
     last_agents: list[Literal["city", "food", "fun"]] = Field(default_factory=list)
     budgets: dict[Literal["food", "fun"], float | None] = Field(default_factory=lambda: {"food": None, "fun": None})
+    domain_filters: dict[Literal["food", "fun"], ExploreFilters] = Field(default_factory=dict)
     revision: int = 0
 
 

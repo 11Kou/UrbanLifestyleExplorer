@@ -235,6 +235,8 @@ def details(raw: dict):
     if p.photos:
         st.image(str(p.photos[0].url), caption="地点图片 · 来源：高德地图", width="stretch")
     st.write(place_introduction(p) if p.mode == "live" else p.reason)
+    if p.supervisor_reason:
+        st.write("**推荐理由：** " + p.supervisor_reason)
     st.write(f"**所在片区：** {p.area or '待确认'}")
     st.write(f"**地址：** {p.address or '待确认'}")
     st.write(f"**人均参考：** {'待确认' if p.cost is None else f'¥{p.cost:g}'}")
@@ -243,6 +245,10 @@ def details(raw: dict):
         st.caption(f"距选中地点约 {p.distance_m:g} 米（直线距离）")
     if p.rating is not None:
         st.caption(f"地图评分：{p.rating:g}；评分不代表实时热度或榜单排名。")
+    if p.match_reasons:
+        st.caption("筛选依据（查询时）：" + "；".join(p.match_reasons))
+    if p.unverified_preferences:
+        st.caption("偏好待确认：" + "、".join(p.unverified_preferences) + "。现有标签不足以确认，请向场所核实。")
     if p.kind == "fun":
         st.caption("展览、演出等限时活动，请以场馆官方日期、场次与预约信息为准。")
     st.markdown("**资料来源**")
@@ -270,9 +276,13 @@ def cards(places: list[dict], prefix: str):
                 st.caption(f'{p.get("area") or "片区待确认"} · {cost}')
                 introduction = place_introduction(Place.model_validate(p)) if p["mode"] == "live" else p.get("reason", "")
                 st.write(introduction)
-                reason = p.get("reason", "")
+                reason = p.get("supervisor_reason") or p.get("reason", "")
                 if p["mode"] == "live" and reason and reason != introduction and not reason.startswith("地图检索候选"):
-                    st.caption("推荐理由：" + reason)
+                    st.write("推荐理由：" + reason)
+                if p.get("match_reasons"):
+                    st.caption("筛选依据（查询时）：" + "；".join(p["match_reasons"]))
+                if p.get("unverified_preferences"):
+                    st.caption("偏好待确认：" + "、".join(p["unverified_preferences"]))
                 tags = p.get("tags", [])[:3]
                 if tags:
                     st.caption(" · ".join(tags))
@@ -465,5 +475,8 @@ with assistant, st.container(key="assistant"):
                 st.error(str(error))
     if st.session_state.trace:
         with st.expander("本次协作过程"):
-            st.caption("主控 → " + "、".join(LABELS[a] for a in st.session_state.trace) + " → 汇总与校验")
+            st.caption("主管拆分任务 → " + "、".join(LABELS[a] for a in st.session_state.trace) + " → 审核与按需补查 → 最终推荐")
+            for result in st.session_state.chat_results:
+                if result.get("attempts", 1) == 2:
+                    st.caption(LABELS[result["agent"]] + "：已完成一次定向补查，条件未放宽。")
             st.caption("规则演示" if health["mode"] == "demo" else "模型协作" if health["capabilities"]["llm"] else "规则分流与真实接口")
